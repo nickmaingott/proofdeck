@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ProofDeck</title>
+<meta name="description" content="A private study guide that turns your notes into flashcards and quizzes. Every AI-written card waits beside the sentence it came from until you approve it.">
+<style>
+  :root{
+    --bg:#f6f4ef; --surface:#ffffff; --surface2:#f0ede6; --ink:#1d1f24; --muted:#6a6f7a; --line:#e2ddd2;
+    --accent:#2f5bd3; --accent-ink:#fff; --accent-soft:#e6ecfb;
+    --ok:#1f8a4c; --ok-soft:#e3f4ea; --warn:#a86a00; --warn-soft:#fbf0d9; --bad:#c23a3a; --bad-soft:#fbe5e5;
+    --mark:#fff1a8; --shadow:0 1px 2px #0000000d, 0 6px 20px #00000010; --radius:14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --surface:#1c1f26; --surface2:#242832; --ink:#eceef3; --muted:#9aa1b0; --line:#2e3340;
+      --accent:#7d9cff; --accent-ink:#0d1220; --accent-soft:#232c45;
+      --ok:#5ccf8b; --ok-soft:#1b3326; --warn:#f0b54b; --warn-soft:#3a2e15; --bad:#ff7b7b; --bad-soft:#3d1f22;
+      --mark:#5b4c12; --shadow:0 1px 2px #0006, 0 6px 20px #0005;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  button,input,textarea,select{font:inherit;color:inherit}
+  a{color:var(--accent)}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 16px}
+  header.top{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .bar{display:flex;align-items:center;gap:14px;height:60px}
+  .brand{font-weight:800;font-size:20px;letter-spacing:.2px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+  .brand .logo{width:28px;height:28px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:15px}
+  nav.tabs{display:flex;gap:4px;overflow-x:auto;flex:1;scrollbar-width:none}
+  nav.tabs button{border:0;background:none;padding:8px 12px;border-radius:9px;cursor:pointer;color:var(--muted);font-weight:600;white-space:nowrap}
+  nav.tabs button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+  @media (max-width:720px){ .bar{flex-wrap:wrap;height:auto;padding:10px 0 8px;row-gap:8px} nav.tabs{order:3;flex-basis:100%} }
+  .count{display:inline-block;min-width:20px;padding:0 6px;border-radius:10px;background:var(--accent);color:var(--accent-ink);font-size:12px;line-height:20px;text-align:center;margin-left:4px}
+  main{padding:24px 0 60px}
+  h1{font-size:28px;margin:0 0 6px} h2{font-size:20px;margin:0 0 12px} h3{font-size:16px;margin:0 0 8px}
+  .sub{color:var(--muted);margin:0 0 20px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+  .grid{display:grid;gap:14px}
+  .g4{grid-template-columns:repeat(4,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g2{grid-template-columns:1fr 1fr}
+  @media (max-width:820px){.g4{grid-template-columns:1fr 1fr}.g3,.g2{grid-template-columns:1fr}}
+  .stat .n{font-size:30px;font-weight:800} .stat .l{color:var(--muted);font-size:14px}
+  .btn{border:1px solid var(--line);background:var(--surface);padding:9px 14px;border-radius:10px;cursor:pointer;font-weight:600}
+  .btn:hover{border-color:var(--muted)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+  .btn.bad{color:var(--bad)}
+  .btn.small{padding:5px 10px;font-size:14px}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .spacer{flex:1}
+  label.f{display:block;font-size:13px;font-weight:600;color:var(--muted);margin:12px 0 6px}
+  input[type=text],input[type=password],input[type=search],textarea,select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);outline:none}
+  input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+  textarea{min-height:160px;resize:vertical}
+  .muted{color:var(--muted)} .small{font-size:14px}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:3px 9px;border-radius:20px}
+  .b-ok{background:var(--ok-soft);color:var(--ok)} .b-warn{background:var(--warn-soft);color:var(--warn)} .b-bad{background:var(--bad-soft);color:var(--bad)} .b-info{background:var(--accent-soft);color:var(--accent)}
+  .review{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--surface);box-shadow:var(--shadow);margin-bottom:16px}
+  .review>div{padding:18px}
+  .review .src{background:var(--surface2);border-right:1px solid var(--line)}
+  @media (max-width:820px){.review{grid-template-columns:1fr}.review .src{border-right:0;border-bottom:1px solid var(--line)}}
+  .ctx{font-family:Georgia,"Times New Roman",serif;font-size:16px;line-height:1.6}
+  .ctx .dim{color:var(--muted)}
+  mark{background:var(--mark);color:inherit;padding:1px 2px;border-radius:3px}
+  .lbl{font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .q{font-weight:700;font-size:17px;margin-bottom:8px}
+  .opts{list-style:none;padding:0;margin:6px 0}
+  .opts li{padding:7px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px}
+  .opts li.right{border-color:var(--ok);background:var(--ok-soft)}
+  .empty{text-align:center;padding:40px 20px;color:var(--muted)}
+  .lib-item{display:grid;grid-template-columns:1fr auto;gap:10px;padding:14px 0;border-bottom:1px solid var(--line)}
+  .lib-item:last-child{border-bottom:0}
+  details.ex summary{cursor:pointer;color:var(--muted);font-size:14px}
+  .quizbox{max-width:640px;margin:0 auto}
+  .flip{min-height:200px;display:flex;flex-direction:column;justify-content:center;text-align:center;font-size:20px}
+  .choice{display:block;width:100%;text-align:left;margin-bottom:8px;padding:12px 14px}
+  .choice.right{border-color:var(--ok);background:var(--ok-soft)} .choice.wrong{border-color:var(--bad);background:var(--bad-soft)}
+  .progress{height:6px;background:var(--surface2);border-radius:4px;overflow:hidden;margin-bottom:16px}
+  .progress>i{display:block;height:100%;background:var(--accent)}
+  .status{margin-top:10px;font-size:14px}
+  .lockpage{min-height:100vh;display:grid;place-items:center;padding:16px}
+  .lockcard{max-width:420px;width:100%}
+  .hidden{display:none!important}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:0}
+  .steps li{counter-increment:s;padding-left:38px;position:relative;margin-bottom:12px}
+  .steps li::before{content:counter(s);position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:800;display:grid;place-items:center;font-size:14px}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;box-shadow:var(--shadow);z-index:20}
+</style>
+</head>
+<body>
+
+<!-- LOCK SCREEN -->
+<section id="lock" class="lockpage">
+  <div class="card lockcard">
+    <div class="brand" style="margin-bottom:10px"><span class="logo">✓</span> ProofDeck</div>
+    <p class="muted" style="margin-top:0">Your private study guide. Every AI-written card is checked against the sentence it came from before it reaches your library.</p>
+    <div id="setupForm" class="hidden">
+      <h2>Create your passcode</h2>
+      <p class="small muted">Your notes and cards are encrypted on this device with this passcode. There is no server and no recovery, so pick something you'll remember.</p>
+      <label class="f" for="newPass">Passcode (at least 6 characters)</label>
+      <input id="newPass" type="password" autocomplete="new-password">
+      <label class="f" for="newPass2">Confirm passcode</label>
+      <input id="newPass2" type="password" autocomplete="new-password">
+      <div class="row" style="margin-top:14px"><button class="btn primary" id="setupBtn">Create my study guide</button></div>
+    </div>
+    <div id="unlockForm" class="hidden">
+      <h2>Welcome back</h2>
+      <label class="f" for="pass">Passcode</label>
+      <input id="pass" type="password" autocomplete="current-password">
+      <div class="row" style="margin-top:14px"><button class="btn primary" id="unlockBtn">Unlock</button></div>
+      <details style="margin-top:18px" class="small"><summary class="muted">Forgot your passcode?</summary>
+        <p class="muted">Without the passcode the data can't be decrypted. You can erase this device's study guide and start over.</p>
+        <label class="f" for="wipeConfirm">Type ERASE to confirm</label>
+        <input id="wipeConfirm" type="text" autocomplete="off">
+        <div class="row" style="margin-top:8px"><button class="btn bad" id="wipeBtn">Erase and start over</button></div>
+      </details>
+    </div>
+    <div class="status" id="lockMsg" role="status"></div>
+  </div>
+</section>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <header class="top"><div class="wrap bar">
+    <div class="brand"><span class="logo">✓</span> ProofDeck</div>
+    <nav class="tabs" id="tabs">
+      <button data-v="home">Dashboard</button>
+      <button data-v="notes">Notes</button>
+      <button data-v="review">Review <span class="count" id="qCount">0</span></button>
+      <button data-v="library">Library</button>
+      <button data-v="quiz">Quiz</button>
+      <button data-v="settings">Settings</button>
+    </nav>
+    <button class="btn small" id="lockBtn" title="Lock">🔒 Lock</button>
+  </div></header>
+  <main class="wrap" id="view"></main>
+</div>
+
+<script type="module">
+// ================== crypto + storage ==================
+const STORE = 'proofdeck.vault.v1';
+const ITER = 310000;
+const enc = new TextEncoder(), dec = new TextDecoder();
+const SDK_URL = 'https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@1.1.0/+esm';
+
+function toB64(buf){ const b = new Uint8Array(buf); let s=''; for (let i=0;i<b.length;i+=0x8000) s += String.fromCharCode.apply(null, b.subarray(i,i+0x8000)); return btoa(s); }
+function fromB64(s){ const bin = atob(s); const b = new Uint8Array(bin.length); for (let i=0;i<bin.length;i++) b[i]=bin.charCodeAt(i); return b; }
+async function deriveKey(pass, salt){
+  const base = await crypto.subtle.importKey('raw', enc.encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2', salt, iterations:ITER, hash:'SHA-256'}, base, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+}
+let key = null, salt = null, vault = null;
+function readStore(){ try { return JSON.parse(localStorage.getItem(STORE) || 'null'); } catch(e){ return null; } }
+async function persist(){
+  if (!key || !vault) return;
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, enc.encode(JSON.stringify(vault)));
+  localStorage.setItem(STORE, JSON.stringify({v:1, salt: toB64(salt), iv: toB64(iv), ct: toB64(ct)}));
+}
+let saveTimer = null;
+function save(){ clearTimeout(saveTimer); saveTimer = setTimeout(() => persist().catch(e => toast('Could not save: ' + e.message)), 250); }
+
+function newVault(){
+  return { createdAt: Date.now(), sources: [], queue: [], library: [],
+    settings: { apiKey: '', model: 'claude-opus-5-5' },
+    stats: { approved: 0, edited: 0, discarded: 0, quizRight: 0, quizWrong: 0, sessions: 0 } };
+}
+
+// ================== lock screen ==================
+const $ = s => document.querySelector(s);
+function showLock(msg){
+  $('#app').classList.add('hidden'); $('#lock').classList.remove('hidden');
+  const has = !!readStore();
+  $('#setupForm').classList.toggle('hidden', has); $('#unlockForm').classList.toggle('hidden', !has);
+  $('#lockMsg').textContent = msg || '';
+  setTimeout(() => (has ? $('#pass') : $('#newPass')).focus(), 50);
+}
+function lockMsg(m, bad){ const el = $('#lockMsg'); el.textContent = m; el.style.color = bad ? 'var(--bad)' : 'var(--muted)'; }
+
+$('#setupBtn').onclick = async () => {
+  const p1 = $('#newPass').value, p2 = $('#newPass2').value;
+  if (p1.length < 6) return lockMsg('Use at least 6 characters.', true);
+  if (p1 !== p2) return lockMsg("The two passcodes don't match.", true);
+  lockMsg('Setting up encryption…');
+  salt = crypto.getRandomValues(new Uint8Array(16));
+  key = await deriveKey(p1, salt);
+  vault = newVault();
+  await persist();
+  $('#newPass').value = $('#newPass2').value = '';
+  openApp();
+};
+async function unlock(){
+  const st = readStore(); if (!st) return showLock();
+  lockMsg('Unlocking…');
+  try {
+    salt = fromB64(st.salt);
+    const k = await deriveKey($('#pass').value, salt);
+    const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv: fromB64(st.iv)}, k, fromB64(st.ct));
+    vault = Object.assign(newVault(), JSON.parse(dec.decode(pt)));
+    vault.settings = Object.assign(newVault().settings, vault.settings);
+    vault.stats = Object.assign(newVault().stats, vault.stats);
+    key = k; $('#pass').value = '';
+    openApp();
+  } catch(e){ key = null; vault = null; lockMsg('Wrong passcode. Try again.', true); }
+}
+$('#unlockBtn').onclick = unlock;
+$('#pass').addEventListener('keydown', e => { if (e.key === 'Enter') unlock(); });
+$('#newPass2').addEventListener('keydown', e => { if (e.key === 'Enter') $('#setupBtn').click(); });
+$('#wipeBtn').onclick = () => {
+  if ($('#wipeConfirm').value.trim() !== 'ERASE') return lockMsg('Type ERASE to confirm.', true);
+  localStorage.removeItem(STORE); $('#wipeConfirm').value = ''; showLock('Erased. Create a new passcode to start over.');
+};
+function lockNow(msg){ persist().finally(() => { key = null; vault = null; $('#view').innerHTML = ''; showLock(msg || 'Locked.'); }); }
+$('#lockBtn').onclick = () => lockNow();
+
+// auto-lock after 15 minutes of inactivity
+let lastActive = Date.now();
+['pointerdown','keydown','scroll'].forEach(ev => addEventListener(ev, () => lastActive = Date.now(), {passive:true}));
+setInterval(() => { if (key && Date.now() - lastActive > 15*60*1000) lockNow('Locked after 15 minutes of inactivity.'); }, 30000);
+
+// ================== app shell ==================
+let current = 'home';
+function openApp(){
+  vault.stats.sessions++; save();
+  $('#lock').classList.add('hidden'); $('#app').classList.remove('hidden');
+  go(current);
+}
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b) go(b.dataset.v); });
+function go(v){
+  current = v;
+  for (const b of document.querySelectorAll('#tabs button')) b.classList.toggle('on', b.dataset.v === v);
+  $('#qCount').textContent = vault.queue.length;
+  $('#qCount').style.display = vault.queue.length ? '' : 'none';
+  ({home, notes, review, library, quiz, settings})[v]();
+  window.scrollTo(0,0);
+}
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4);
+function toast(m){ const t = document.createElement('div'); t.className='toast'; t.textContent=m; document.body.appendChild(t); setTimeout(()=>t.remove(), 2600); }
+const srcById = id => vault.sources.find(s => s.id === id);
+const fmtDate = t => new Date(t).toLocaleDateString(undefined, {month:'short', day:'numeric'});
+
+// ================== grounding check ==================
+function plain(s){ return s.replace(/^\s{0,3}#{1,6}\s*/,'').replace(/^\s*[-*+]\s+/,'').replace(/\*\*|__|`/g,'').trim(); }
+function norm(s){
+  return plain(s).toLowerCase().replace(/[“”]/g,'"').replace(/[‘’]/g,"'").replace(/[–—]/g,'-')
+    .replace(/\s+/g,' ').replace(/[.!?;:,\s]+$/,'').trim();
+}
+const tokens = s => norm(s).split(/[^a-z0-9]+/).filter(w => w.length > 2);
+function sentencesOf(src){
+  if (src._sent) return src._sent;
+  const out = [];
+  src.text.split(/\n/).forEach((line, li) => {
+    if (/^\s{0,3}#/.test(line)) return;          // headings aren't sentences
+    const p = plain(line); if (!p) return;
+    p.split(/(?<=[.!?])\s+(?=[A-Z"“(*])/).forEach(s => { if (s.trim()) out.push({text: s.trim(), line: li}); });
+  });
+  Object.defineProperty(src, '_sent', {value: out, enumerable: false, configurable: true});
+  return out;
+}
+function checkGrounding(card){
+  const src = srcById(card.sourceId);
+  if (!src || !card.excerpt) return {status:'missing', score:0, idx:-1};
+  const sents = sentencesOf(src), ne = norm(card.excerpt), et = new Set(tokens(card.excerpt));
+  const whole = norm(src.text.split('\n').map(plain).join(' '));
+  let best = -1, bestScore = 0;
+  sents.forEach((s, i) => {
+    const ns = norm(s.text);
+    let sc;
+    if (ns.includes(ne) || (ne.includes(ns) && ns.length > 25)) sc = 1;
+    else { const st = tokens(s.text); const hit = st.filter(w => et.has(w)).length; sc = et.size ? hit / Math.max(et.size, st.length*0.6) : 0; }
+    if (sc > bestScore){ bestScore = sc; best = i; }
+  });
+  const exact = ne.length > 12 && whole.includes(ne);
+  return { status: exact ? 'exact' : (bestScore >= 0.6 ? 'close' : 'missing'), score: exact ? 1 : bestScore, idx: best };
+}
+function badge(g){
+  if (g.status === 'exact') return '<span class="badge b-ok">✓ Exact quote from your notes</span>';
+  if (g.status === 'close') return `<span class="badge b-warn">≈ Close match (${Math.round(g.score*100)}%), so compare carefully</span>`;
+  return '<span class="badge b-bad">✗ Not found in your notes</span>';
+}
+function contextHtml(card, g){
+  const src = srcById(card.sourceId); if (!src) return '<p class="muted">Source note was deleted.</p>';
+  const s = sentencesOf(src);
+  if (g.idx < 0) return `<p class="muted">The AI quoted: “${esc(card.excerpt)}”, but no matching sentence was found.</p>`;
+  const prev = s[g.idx-1], next = s[g.idx+1];
+  return (g.status === 'missing' ? '<p class="small" style="margin-top:0;color:var(--bad)">Closest sentence in your notes (it doesn\'t back up this card):</p>' : '')
+    + `<div class="ctx">${prev ? `<span class="dim">${esc(prev.text)} </span>` : ''}<mark>${esc(s[g.idx].text)}</mark>${next ? `<span class="dim"> ${esc(next.text)}</span>` : ''}</div>`
+    + (g.status !== 'exact' ? `<p class="small muted" style="margin-bottom:0">AI's quoted excerpt: “${esc(card.excerpt)}”</p>` : '');
+}
+
+// ================== card generation ==================
+const CARD_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['cards'],
+  properties: { cards: { type: 'array', items: {
+    type: 'object', additionalProperties: false,
+    required: ['type','concept','front','back','options','answer_index','excerpt'],
+    properties: {
+      type: { type: 'string', enum: ['flashcard','mcq'] },
+      concept: { type: 'string', description: 'Short name of the key concept this card tests' },
+      front: { type: 'string', description: 'Flashcard prompt, or the multiple-choice question' },
+      back: { type: 'string', description: 'Flashcard answer, or the text of the correct option' },
+      options: { type: 'array', items: { type: 'string' }, description: 'Exactly 4 options for mcq; empty for flashcard' },
+      answer_index: { type: 'integer', description: 'Index of the correct option for mcq; -1 for flashcard' },
+      excerpt: { type: 'string', description: 'One sentence copied word-for-word from the notes that supports the answer' }
+    } } } }
+};
+const SYSTEM = `You turn a student's own notes into study cards. Use only what the notes say: no outside facts, even true ones.
+For each key concept write a flashcard (front: a question, back: a short answer) and, where it helps, a multiple-choice question with exactly 4 options where only one is supported by the notes.
+Every card must include "excerpt": one sentence copied word-for-word from the notes (same wording, no paraphrasing, no markdown symbols) that by itself supports the answer. If you can't point to such a sentence, don't write the card.
+Prefer understanding (why/how) over trivia. Keep answers short. Skip concepts listed as already covered.`;
+
+function chunkText(text, max=8000){
+  const paras = text.split(/\n{2,}/); const out = []; let cur = '';
+  for (const p of paras){ if ((cur + '\n\n' + p).length > max && cur){ out.push(cur); cur = p; } else cur = cur ? cur + '\n\n' + p : p; }
+  if (cur) out.push(cur); return out;
+}
+function knownConcepts(){ return [...vault.queue, ...vault.library].map(c => c.concept).filter(Boolean); }
+
+async function generateAI(src, onStatus){
+  const { apiKey, model } = vault.settings;
+  if (!apiKey) throw new Error('Add your Anthropic API key in Settings first, or use "Generate offline".');
+  onStatus('Loading the Anthropic SDK…');
+  const { default: Anthropic } = await import(SDK_URL);
+  // BYO key: the key lives only in this browser's encrypted vault and is sent only to api.anthropic.com.
+  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+  const chunks = chunkText(src.text);
+  const made = [];
+  for (let i = 0; i < chunks.length; i++){
+    onStatus(`Asking ${model} to read part ${i+1} of ${chunks.length}…`);
+    const supportsFallback = /opus|sonnet|fable/.test(model);
+    let res;
+    try {
+      res = await client.beta.messages.create({
+        model, max_tokens: 16000,
+        ...(supportsFallback ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' } : {}),
+        output_config: { effort: 'medium', format: { type: 'json_schema', schema: CARD_SCHEMA } },
+        system: SYSTEM,
+        messages: [{ role: 'user', content:
+          `Notes title: ${src.title}\nAlready covered concepts (skip these): ${knownConcepts().join('; ') || 'none'}\n\n<notes>\n${chunks[i]}\n</notes>` }]
+      });
+    } catch (e) {
+      if (e instanceof Anthropic.AuthenticationError) throw new Error('Your API key was rejected. Check it in Settings.');
+      if (e instanceof Anthropic.PermissionDeniedError) throw new Error('This API key is not allowed to use that model.');
+      if (e instanceof Anthropic.RateLimitError) throw new Error('Rate limit reached. Wait a minute and try again.');
+      if (e instanceof Anthropic.APIConnectionError) throw new Error('Could not reach the Anthropic API. Check your connection.');
+      if (e instanceof Anthropic.APIError) throw new Error(`API error ${e.status ?? ''}: ${e.message}`);
+      throw e;
+    }
+    if (res.stop_reason === 'refusal') throw new Error('The model declined to process these notes.');
+    const text = res.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    let data; try { data = JSON.parse(text); } catch { throw new Error(res.stop_reason === 'max_tokens' ? 'The response was cut off. Try shorter notes.' : 'The AI response was not valid JSON.'); }
+    for (const c of data.cards || []) made.push(toCard(c, src, 'ai', model));
+  }
+  return made;
+}
+function toCard(c, src, origin, model){
+  const mcq = c.type === 'mcq' && Array.isArray(c.options) && c.options.length >= 2;
+  const opts = mcq ? c.options.slice(0, 4) : [];
+  let ai = mcq ? c.answer_index : -1;
+  if (mcq && (ai < 0 || ai >= opts.length)) ai = Math.max(0, opts.indexOf(c.back));
+  return { id: uid(), kind: mcq ? 'mcq' : 'flash', concept: (c.concept||'').trim(), front: (c.front||'').trim(),
+    back: mcq ? opts[ai] : (c.back||'').trim(), options: opts, answerIndex: ai, excerpt: (c.excerpt||'').trim(),
+    sourceId: src.id, origin, model: model || null, createdAt: Date.now(), right: 0, wrong: 0 };
+}
+
+// offline generator: pulls "**Term** — definition" lines and "X is Y" sentences
+function generateOffline(src){
+  const defs = [], seen = new Set(knownConcepts().map(s => s.toLowerCase()));
+  for (const line of src.text.split('\n')){
+    const m = line.match(/^\s*(?:[-*+]\s+)?\*\*(.+?)\*\*\s*(?:—|–|-|:)\s*(.+)$/);
+    if (m){ defs.push({ term: m[1].trim(), def: m[2].trim(), excerpt: plain(line) }); continue; }
+  }
+  if (defs.length < 3){
+    for (const s of sentencesOf(src)){
+      const m = s.text.match(/^(?:An?|The)?\s*([A-Za-z][\w\- ()]{2,40}?)\s+(?:is|are|means|refers to)\s+(.{20,})$/);
+      if (m) defs.push({ term: m[1].trim(), def: m[2].trim(), excerpt: s.text });
+    }
+  }
+  const cards = [];
+  defs.forEach((d, i) => {
+    if (seen.has(d.term.toLowerCase())) return;
+    const ans = d.def.charAt(0).toUpperCase() + d.def.slice(1);
+    cards.push(toCard({ type:'flashcard', concept:d.term, front:`What is ${d.term}?`, back:ans, options:[], answer_index:-1, excerpt:d.excerpt }, src, 'offline'));
+    if (defs.length >= 4 && i % 2 === 0){
+      const others = defs.filter(o => o !== d).sort(() => Math.random() - .5).slice(0, 3).map(o => o.term);
+      const opts = [d.term, ...others].sort(() => Math.random() - .5);
+      const short = ans.length > 170 ? ans.slice(0, 167) + '…' : ans;
+      cards.push(toCard({ type:'mcq', concept:d.term + ' (match)', front:`Which term matches this description? “${short}”`, back:d.term, options:opts, answer_index:opts.indexOf(d.term), excerpt:d.excerpt }, src, 'offline'));
+    }
+  });
+  return cards;
+}
+
+// ================== views ==================
+function home(){
+  const st = vault.stats, total = st.quizRight + st.quizWrong;
+  const acc = total ? Math.round(st.quizRight / total * 100) + '%' : '—';
+  const reviewed = st.approved + st.discarded;
+  const approveRate = reviewed ? Math.round(st.approved / reviewed * 100) + '%' : '—';
+  const weak = [...vault.library].filter(c => c.wrong > c.right).slice(0, 4);
+  $('#view').innerHTML = `
+    <h1>Your study guide</h1>
+    <p class="sub">Notes in, verified cards out. Nothing reaches your library until you've checked it against your own words.</p>
+    <div class="grid g4">
+      <div class="card stat"><div class="n">${vault.sources.length}</div><div class="l">Notes</div></div>
+      <div class="card stat"><div class="n">${vault.queue.length}</div><div class="l">Waiting for review</div></div>
+      <div class="card stat"><div class="n">${vault.library.length}</div><div class="l">Approved cards</div></div>
+      <div class="card stat"><div class="n">${acc}</div><div class="l">Quiz accuracy</div></div>
+    </div>
+    <div class="grid g2" style="margin-top:14px">
+      <div class="card">
+        <h2>Next step</h2>
+        ${!vault.sources.length ? `<p>Start by adding notes you're allowed to use: a lecture transcript, your class notes, or the sample notes.</p><button class="btn primary" data-go="notes">Add notes</button>`
+        : vault.queue.length ? `<p><b>${vault.queue.length}</b> new card${vault.queue.length>1?'s are':' is'} waiting beside ${vault.queue.length>1?'their':'its'} source sentence.</p><button class="btn primary" data-go="review">Review cards</button>`
+        : vault.library.length ? `<p>Your library has <b>${vault.library.length}</b> cards. Quiz yourself; missed cards come back first.</p><button class="btn primary" data-go="quiz">Start a quiz</button>`
+        : `<p>Generate cards from your notes.</p><button class="btn primary" data-go="notes">Generate cards</button>`}
+      </div>
+      <div class="card">
+        <h2>Review record</h2>
+        <p class="small muted" style="margin-top:0">How often the AI's drafts held up against your notes.</p>
+        <div class="row small"><span class="badge b-ok">${st.approved} approved</span><span class="badge b-info">${st.edited} edited first</span><span class="badge b-bad">${st.discarded} discarded</span></div>
+        <p class="small" style="margin-bottom:0">Approval rate: <b>${approveRate}</b></p>
+      </div>
+    </div>
+    ${weak.length ? `<div class="card" style="margin-top:14px"><h2>Needs another look</h2>${weak.map(c => `<p class="small" style="margin:6px 0">• ${esc(c.front)} <span class="muted">(${c.wrong} missed)</span></p>`).join('')}</div>` : ''}
+    <div class="card" style="margin-top:14px">
+      <h2>How ProofDeck works</h2>
+      <ol class="steps">
+        <li><b>Add notes.</b> Paste text or upload a .txt/.md file.</li>
+        <li><b>Generate.</b> Claude (with your own API key) drafts flashcards and quiz questions, each with the exact sentence it relied on. No key? An offline extractor pulls definitions instead.</li>
+        <li><b>Review.</b> Each draft sits beside its source sentence with a match check. Approve, edit, or discard it.</li>
+        <li><b>Quiz.</b> Only approved cards are used. Missed cards come back first.</li>
+      </ol>
+      <p class="small muted" style="margin:0">🔒 Everything is encrypted on this device with your passcode and locks after 15 minutes idle.</p>
+    </div>`;
+  bindGo();
+}
+function bindGo(){ document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => go(b.dataset.go)); }
+
+function notes(){
+  $('#view').innerHTML = `
+    <h1>Notes</h1>
+    <p class="sub">Use material you're allowed to upload: your own notes, transcripts you made, or openly licensed text.</p>
+    <div class="grid g2">
+      <div class="card">
+        <h2>Add notes</h2>
+        <label class="f" for="nTitle">Title</label>
+        <input id="nTitle" type="text" placeholder="e.g. Week 3: Networking basics">
+        <label class="f" for="nText">Notes</label>
+        <textarea id="nText" placeholder="Paste your notes here…"></textarea>
+        <div class="row" style="margin-top:10px">
+          <button class="btn primary" id="nSave">Save notes</button>
+          <label class="btn" for="nFile" style="cursor:pointer">Upload .txt / .md</label>
+          <input id="nFile" type="file" accept=".txt,.md,text/plain,text/markdown" class="hidden">
+          <span class="spacer"></span>
+          <button class="btn small" id="nSample">Load sample notes</button>
+        </div>
+        <p class="small muted">The sample is my own study notes on real-time multiplayer networking, written while building my game Shard Scramble.</p>
+      </div>
+      <div class="card">
+        <h2>Your notes</h2>
+        <div id="nList"></div>
+      </div>
+    </div>`;
+  const list = () => {
+    $('#nList').innerHTML = vault.sources.length ? vault.sources.map(s => {
+      const inQ = vault.queue.filter(c => c.sourceId === s.id).length, inL = vault.library.filter(c => c.sourceId === s.id).length;
+      return `<div style="padding:12px 0;border-bottom:1px solid var(--line)">
+        <div class="row"><b>${esc(s.title)}</b><span class="spacer"></span><span class="small muted">${s.text.split(/\s+/).length} words · ${fmtDate(s.createdAt)}</span></div>
+        <div class="small muted" style="margin:4px 0 8px">${inQ} in review · ${inL} in library</div>
+        <div class="row">
+          <button class="btn small primary" data-ai="${s.id}">✨ Generate with AI</button>
+          <button class="btn small" data-off="${s.id}">Generate offline</button>
+          <span class="spacer"></span>
+          <button class="btn small bad" data-del="${s.id}">Delete</button>
+        </div>
+        <div class="status" id="st-${s.id}"></div>
+      </div>`; }).join('') : '<div class="empty">No notes yet.</div>';
+    document.querySelectorAll('[data-ai]').forEach(b => b.onclick = () => runGen(b.dataset.ai, true, b));
+    document.querySelectorAll('[data-off]').forEach(b => b.onclick = () => runGen(b.dataset.off, false, b));
+    document.querySelectorAll('[data-del]').forEach(b => b.onclick = () => delSource(b.dataset.del, b));
+  };
+  list();
+  $('#nSave').onclick = () => {
+    const title = $('#nTitle').value.trim() || 'Untitled notes', text = $('#nText').value.trim();
+    if (text.split(/\s+/).length < 20) return toast('Add at least a few sentences of notes.');
+    vault.sources.unshift({ id: uid(), title, text, createdAt: Date.now() }); save();
+    $('#nTitle').value = ''; $('#nText').value = ''; toast('Notes saved'); list();
+  };
+  $('#nFile').onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    if (f.size > 500000) return toast('That file is too large (500 KB max).');
+    $('#nText').value = await f.text(); $('#nTitle').value = f.name.replace(/\.(txt|md)$/i, '');
+  };
+  $('#nSample').onclick = async () => {
+    try { const r = await fetch('notes.md'); if (!r.ok) throw 0; const t = await r.text();
+      $('#nText').value = t; $('#nTitle').value = (t.match(/^#\s+(.+)$/m) || [,'Sample notes'])[1]; }
+    catch { toast('Could not load the sample notes.'); }
+  };
+  async function runGen(id, ai, btn){
+    const src = srcById(id), st = $('#st-' + id);
+    document.querySelectorAll('[data-ai],[data-off]').forEach(b => b.disabled = true);
+    st.style.color = 'var(--muted)';
+    try {
+      const cards = ai ? await generateAI(src, m => st.textContent = m) : generateOffline(src);
+      const fresh = cards.filter(c => c.front && c.back);
+      vault.queue.push(...fresh); save();
+      st.style.color = 'var(--ok)';
+      st.innerHTML = fresh.length ? `Added ${fresh.length} draft cards to the review queue. <a href="#" id="toReview">Review them →</a>` : 'No new cards: everything in these notes is already covered.';
+      const l = $('#toReview'); if (l) l.onclick = e => { e.preventDefault(); go('review'); };
+      $('#qCount').textContent = vault.queue.length; $('#qCount').style.display = vault.queue.length ? '' : 'none';
+    } catch (e) { st.style.color = 'var(--bad)'; st.textContent = e.message; }
+    document.querySelectorAll('[data-ai],[data-off]').forEach(b => b.disabled = false);
+  }
+  function delSource(id, btn){
+    if (btn.dataset.armed !== '1'){ btn.dataset.armed = '1'; btn.textContent = 'Delete notes + their cards?'; setTimeout(() => { if (btn.isConnected){ btn.dataset.armed=''; btn.textContent='Delete'; } }, 3500); return; }
+    vault.sources = vault.sources.filter(s => s.id !== id);
+    vault.queue = vault.queue.filter(c => c.sourceId !== id);
+    vault.library = vault.library.filter(c => c.sourceId !== id);
+    save(); go('notes');
+  }
+}
+
+function cardBody(c){
+  if (c.kind === 'mcq') return `<div class="q">${esc(c.front)}</div><ul class="opts">${c.options.map((o,i) => `<li class="${i===c.answerIndex?'right':''}">${i===c.answerIndex?'✓ ':''}${esc(o)}</li>`).join('')}</ul>`;
+  return `<div class="q">${esc(c.front)}</div><div>${esc(c.back)}</div>`;
+}
+function editorHtml(c){
+  return `<label class="f">${c.kind==='mcq'?'Question':'Front (question)'}</label><textarea class="e-front" style="min-height:70px">${esc(c.front)}</textarea>
+    ${c.kind==='mcq' ? `<label class="f">Options (select the correct one)</label>${c.options.map((o,i)=>`<div class="row" style="margin-bottom:6px;flex-wrap:nowrap"><input type="radio" name="ans-${c.id}" value="${i}" ${i===c.answerIndex?'checked':''} aria-label="Correct option ${i+1}"><input type="text" class="e-opt" value="${esc(o)}"></div>`).join('')}`
+      : `<label class="f">Back (answer)</label><textarea class="e-back" style="min-height:70px">${esc(c.back)}</textarea>`}`;
+}
+function readEditor(el, c){
+  c.front = el.querySelector('.e-front').value.trim();
+  if (c.kind === 'mcq'){
+    c.options = [...el.querySelectorAll('.e-opt')].map(i => i.value.trim());
+    const r = el.querySelector(`input[name="ans-${c.id}"]:checked`); c.answerIndex = r ? +r.value : 0; c.back = c.options[c.answerIndex];
+  } else c.back = el.querySelector('.e-back').value.trim();
+}
+
+function review(){
+  const q = vault.queue;
+  if (!q.length){ $('#view').innerHTML = `<h1>Review queue</h1><div class="card empty"><p>Nothing waiting. Generate cards from your notes and they'll show up here, each beside the sentence it came from.</p><button class="btn primary" data-go="notes">Go to Notes</button></div>`; bindGo(); return; }
+  const counts = {exact:0, close:0, missing:0};
+  const rows = q.map(c => { const g = checkGrounding(c); counts[g.status]++; return {c, g}; });
+  $('#view').innerHTML = `
+    <h1>Review queue</h1>
+    <p class="sub">Compare each draft with your own words. Approve it if your notes back it up, fix it if it's close, and discard it if it isn't in your notes.</p>
+    <div class="row" style="margin-bottom:16px"><span class="badge b-ok">${counts.exact} exact</span><span class="badge b-warn">${counts.close} close</span><span class="badge b-bad">${counts.missing} not found</span><span class="spacer"></span><span class="small muted">${q.length} waiting</span></div>
+    ${rows.map(({c, g}) => `
+      <div class="review" id="r-${c.id}">
+        <div class="src">
+          <div class="lbl">From your notes · ${esc(srcById(c.sourceId)?.title || 'deleted')}</div>
+          ${contextHtml(c, g)}
+          <div style="margin-top:12px">${badge(g)}</div>
+        </div>
+        <div>
+          <div class="row" style="margin-bottom:8px"><span class="lbl" style="margin:0">${c.kind==='mcq'?'Multiple choice':'Flashcard'} draft</span><span class="spacer"></span><span class="small muted">${c.origin==='ai' ? 'by ' + esc(c.model) : 'offline extractor'}</span></div>
+          <div class="body">${cardBody(c)}</div>
+          <div class="editor hidden">${editorHtml(c)}</div>
+          <div class="row" style="margin-top:14px">
+            <button class="btn ok" data-a="${c.id}">Approve</button>
+            <button class="btn" data-e="${c.id}">Edit</button>
+            <button class="btn bad" data-d="${c.id}">Discard</button>
+          </div>
+        </div>
+      </div>`).join('')}`;
+  const card = id => q.find(c => c.id === id);
+  document.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
+    const c = card(b.dataset.a), box = $('#r-' + c.id), editing = !box.querySelector('.editor').classList.contains('hidden');
+    if (editing){ readEditor(box, c); c.edited = true; vault.stats.edited++; }
+    if (!c.front || !c.back) return toast('A card needs both a question and an answer.');
+    c.match = checkGrounding(c).status; c.approvedAt = Date.now();
+    vault.queue = vault.queue.filter(x => x.id !== c.id); vault.library.unshift(c); vault.stats.approved++;
+    save(); toast(editing ? 'Edited and approved' : 'Approved'); go('review');
+  });
+  document.querySelectorAll('[data-e]').forEach(b => b.onclick = () => {
+    const box = $('#r-' + b.dataset.e); box.querySelector('.editor').classList.remove('hidden'); box.querySelector('.body').classList.add('hidden');
+    b.classList.add('hidden'); box.querySelector('[data-a]').textContent = 'Save & approve';
+  });
+  document.querySelectorAll('[data-d]').forEach(b => b.onclick = () => {
+    vault.queue = vault.queue.filter(x => x.id !== b.dataset.d); vault.stats.discarded++; save(); toast('Discarded'); go('review');
+  });
+}
+
+function library(){
+  $('#view').innerHTML = `
+    <h1>Library</h1>
+    <p class="sub">Only cards you approved. Search by question, answer, or the sentence it came from.</p>
+    <div class="card">
+      <div class="row" style="flex-wrap:nowrap">
+        <input id="lq" type="search" placeholder="Search ${vault.library.length} cards…" aria-label="Search cards">
+        <select id="lsrc" style="max-width:220px" aria-label="Filter by notes"><option value="">All notes</option>${vault.sources.map(s => `<option value="${s.id}">${esc(s.title)}</option>`).join('')}</select>
+      </div>
+      <div id="llist" style="margin-top:10px"></div>
+    </div>`;
+  const render = () => {
+    const term = $('#lq').value.trim().toLowerCase(), sid = $('#lsrc').value;
+    const items = vault.library.filter(c => (!sid || c.sourceId === sid) &&
+      (!term || [c.front, c.back, c.excerpt, c.concept, ...(c.options||[])].join(' ').toLowerCase().includes(term)));
+    $('#llist').innerHTML = items.length ? items.map(c => `
+      <div class="lib-item" id="l-${c.id}">
+        <div>
+          <div class="row small" style="margin-bottom:4px"><span class="badge b-info">${c.kind==='mcq'?'Multiple choice':'Flashcard'}</span>${c.edited?'<span class="badge b-warn">edited</span>':''}<span class="muted">${c.right}✓ ${c.wrong}✗</span></div>
+          <div class="body">${cardBody(c)}</div>
+          <div class="editor hidden">${editorHtml(c)}</div>
+          <details class="ex" style="margin-top:6px"><summary>Source: ${esc(srcById(c.sourceId)?.title || 'deleted notes')}</summary><p class="ctx small">“${esc(c.excerpt)}”</p></details>
+        </div>
+        <div class="row" style="align-items:flex-start;flex-direction:column">
+          <button class="btn small" data-le="${c.id}">Edit</button>
+          <button class="btn small bad" data-ld="${c.id}">Remove</button>
+        </div>
+      </div>`).join('') : `<div class="empty">${vault.library.length ? 'No cards match your search.' : 'No approved cards yet. Approve cards in the Review queue to fill your library.'}</div>`;
+    document.querySelectorAll('[data-le]').forEach(b => b.onclick = () => {
+      const c = vault.library.find(x => x.id === b.dataset.le), box = $('#l-' + c.id), ed = box.querySelector('.editor');
+      if (ed.classList.contains('hidden')){ ed.classList.remove('hidden'); box.querySelector('.body').classList.add('hidden'); b.textContent = 'Save'; }
+      else { readEditor(box, c); c.edited = true; save(); toast('Saved'); render(); }
+    });
+    document.querySelectorAll('[data-ld]').forEach(b => b.onclick = () => {
+      if (b.dataset.armed !== '1'){ b.dataset.armed='1'; b.textContent='Sure?'; return; }
+      vault.library = vault.library.filter(x => x.id !== b.dataset.ld); save(); render();
+    });
+  };
+  $('#lq').oninput = render; $('#lsrc').onchange = render; render();
+}
+
+function quiz(){
+  if (!vault.library.length){ $('#view').innerHTML = `<h1>Quiz</h1><div class="card empty"><p>Quizzes only use cards you've approved. Approve a few in the Review queue first.</p><button class="btn primary" data-go="review">Go to Review</button></div>`; bindGo(); return; }
+  const mcqN = vault.library.filter(c => c.kind==='mcq').length, flashN = vault.library.length - mcqN;
+  $('#view').innerHTML = `
+    <div class="quizbox">
+      <h1>Quiz yourself</h1>
+      <p class="sub">Cards you've missed before come first.</p>
+      <div class="card">
+        <label class="f" for="qmode">Question type</label>
+        <select id="qmode"><option value="mixed">Mixed (${vault.library.length})</option><option value="flash">Flashcards (${flashN})</option><option value="mcq">Multiple choice (${mcqN})</option></select>
+        <label class="f" for="qsrc">Notes</label>
+        <select id="qsrc"><option value="">All notes</option>${vault.sources.map(s => `<option value="${s.id}">${esc(s.title)}</option>`).join('')}</select>
+        <label class="f" for="qn">Number of questions</label>
+        <select id="qn"><option>5</option><option selected>10</option><option>20</option><option value="999">All</option></select>
+        <div class="row" style="margin-top:16px"><button class="btn primary" id="qstart">Start</button></div>
+      </div>
+    </div>`;
+  $('#qstart').onclick = () => {
+    const mode = $('#qmode').value, sid = $('#qsrc').value, n = +$('#qn').value;
+    let deck = vault.library.filter(c => (!sid || c.sourceId === sid) && (mode === 'mixed' || c.kind === mode));
+    if (!deck.length) return toast('No cards match those settings.');
+    deck = deck.map(c => ({c, w: (c.wrong - c.right) + Math.random()*1.5})).sort((a,b) => b.w - a.w).slice(0, n).map(x => x.c);
+    runQuiz(deck);
+  };
+}
+function runQuiz(deck){
+  let i = 0, right = 0;
+  const step = () => {
+    if (i >= deck.length){
+      const pct = Math.round(right / deck.length * 100);
+      $('#view').innerHTML = `<div class="quizbox"><div class="card" style="text-align:center"><h1>${pct}%</h1><p>${right} of ${deck.length} correct.</p>
+        <div class="row" style="justify-content:center"><button class="btn primary" id="again">Another round</button><button class="btn" data-go="library">Library</button></div></div></div>`;
+      $('#again').onclick = quiz; bindGo(); return;
+    }
+    const c = deck[i];
+    const src = srcById(c.sourceId);
+    const proof = `<details class="ex" style="margin-top:12px"><summary>Why? (from ${esc(src?.title || 'your notes')})</summary><p class="ctx small">“${esc(c.excerpt)}”</p></details>`;
+    const head = `<div class="progress"><i style="width:${i/deck.length*100}%"></i></div><div class="row small muted" style="margin-bottom:8px"><span>Question ${i+1} of ${deck.length}</span><span class="spacer"></span><span>${right} correct</span></div>`;
+    const mark = ok => { ok ? (c.right++, right++, vault.stats.quizRight++) : (c.wrong++, vault.stats.quizWrong++); save(); };
+    if (c.kind === 'mcq'){
+      $('#view').innerHTML = `<div class="quizbox">${head}<div class="card"><div class="q" style="font-size:19px">${esc(c.front)}</div>
+        <div id="choices">${c.options.map((o,k) => `<button class="btn choice" data-k="${k}">${esc(o)}</button>`).join('')}</div><div id="after"></div></div></div>`;
+      document.querySelectorAll('.choice').forEach(b => b.onclick = () => {
+        const k = +b.dataset.k, ok = k === c.answerIndex; mark(ok);
+        document.querySelectorAll('.choice').forEach(x => { x.disabled = true; if (+x.dataset.k === c.answerIndex) x.classList.add('right'); });
+        if (!ok) b.classList.add('wrong');
+        $('#after').innerHTML = `<p><b>${ok ? 'Correct!' : 'Not quite.'}</b></p>${proof}<div class="row" style="margin-top:12px"><button class="btn primary" id="next">Next</button></div>`;
+        $('#next').onclick = () => { i++; step(); }; $('#next').focus();
+      });
+    } else {
+      $('#view').innerHTML = `<div class="quizbox">${head}<div class="card"><div class="flip" id="face">${esc(c.front)}</div>
+        <div class="row" style="justify-content:center" id="ctl"><button class="btn primary" id="show">Show answer</button></div></div></div>`;
+      $('#show').onclick = () => {
+        $('#face').innerHTML = `<div class="muted small" style="margin-bottom:6px">${esc(c.front)}</div><div>${esc(c.back)}</div>`;
+        $('#ctl').innerHTML = `<div style="width:100%">${proof}<div class="row" style="justify-content:center;margin-top:12px"><button class="btn ok" id="got">I knew it</button><button class="btn bad" id="miss">I missed it</button></div></div>`;
+        $('#got').onclick = () => { mark(true); i++; step(); };
+        $('#miss').onclick = () => { mark(false); i++; step(); };
+      };
+    }
+  };
+  step();
+}
+
+function settings(){
+  const s = vault.settings;
+  $('#view').innerHTML = `
+    <h1>Settings</h1>
+    <div class="grid g2">
+      <div class="card">
+        <h2>AI card writer</h2>
+        <p class="small muted" style="margin-top:0">ProofDeck calls Claude directly from your browser with <b>your own</b> Anthropic API key. The key is stored encrypted with your passcode on this device and is sent only to api.anthropic.com.</p>
+        <label class="f" for="sKey">Anthropic API key</label>
+        <div class="row" style="flex-wrap:nowrap"><input id="sKey" type="password" autocomplete="off" placeholder="sk-ant-…" value="${esc(s.apiKey)}"><button class="btn small" id="sShow">Show</button></div>
+        <label class="f" for="sModel">Model</label>
+        <select id="sModel">
+          ${[['claude-opus-5-5','Claude Opus 5.5 (best quality)'],['claude-sonnet-5-5','Claude Sonnet 5.5 (faster, cheaper)'],['claude-haiku-5-5','Claude Haiku 5.5 (cheapest)']].map(([v,l]) => `<option value="${v}" ${s.model===v?'selected':''}>${l}</option>`).join('')}
+        </select>
+        <div class="row" style="margin-top:14px"><button class="btn primary" id="sSave">Save</button><button class="btn" id="sTest">Test key</button><button class="btn bad small" id="sClear">Remove key</button></div>
+        <div class="status" id="sMsg"></div>
+      </div>
+      <div class="card">
+        <h2>Passcode & data</h2>
+        <label class="f" for="pOld">Current passcode</label><input id="pOld" type="password" autocomplete="current-password">
+        <label class="f" for="pNew">New passcode</label><input id="pNew" type="password" autocomplete="new-password">
+        <div class="row" style="margin-top:12px"><button class="btn" id="pChange">Change passcode</button></div>
+        <div class="status" id="pMsg"></div>
+        <hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
+        <p class="small muted" style="margin-top:0">Backups stay encrypted with your passcode.</p>
+        <div class="row"><button class="btn" id="bExport">Download backup</button><label class="btn" for="bImport" style="cursor:pointer">Restore backup</label><input id="bImport" type="file" accept=".json,application/json" class="hidden"></div>
+        <div class="status" id="bMsg"></div>
+      </div>
+    </div>`;
+  $('#sShow').onclick = () => { const k = $('#sKey'); k.type = k.type === 'password' ? 'text' : 'password'; $('#sShow').textContent = k.type === 'password' ? 'Show' : 'Hide'; };
+  $('#sSave').onclick = () => { s.apiKey = $('#sKey').value.trim(); s.model = $('#sModel').value; save(); msg('#sMsg', 'Saved.'); };
+  $('#sClear').onclick = () => { s.apiKey = ''; $('#sKey').value = ''; save(); msg('#sMsg', 'Key removed from this device.'); };
+  $('#sTest').onclick = async () => {
+    const k = $('#sKey').value.trim(); if (!k) return msg('#sMsg', 'Paste a key first.', true);
+    msg('#sMsg', 'Testing…');
+    try {
+      const { default: Anthropic } = await import(SDK_URL);
+      const client = new Anthropic({ apiKey: k, dangerouslyAllowBrowser: true });
+      await client.models.retrieve($('#sModel').value);
+      msg('#sMsg', '✓ Key works and the model is available.');
+    } catch (e) { msg('#sMsg', e?.status === 401 ? 'That key was rejected.' : 'Test failed: ' + (e.message || e), true); }
+  };
+  $('#pChange').onclick = async () => {
+    const o = $('#pOld').value, n = $('#pNew').value;
+    if (n.length < 6) return msg('#pMsg', 'New passcode needs at least 6 characters.', true);
+    try { const st = readStore(); const k = await deriveKey(o, fromB64(st.salt)); await crypto.subtle.decrypt({name:'AES-GCM', iv: fromB64(st.iv)}, k, fromB64(st.ct)); }
+    catch { return msg('#pMsg', 'Current passcode is wrong.', true); }
+    salt = crypto.getRandomValues(new Uint8Array(16)); key = await deriveKey(n, salt); await persist();
+    $('#pOld').value = $('#pNew').value = ''; msg('#pMsg', '✓ Passcode changed.');
+  };
+  $('#bExport').onclick = async () => {
+    await persist();
+    const blob = new Blob([localStorage.getItem(STORE)], {type:'application/json'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `proofdeck-backup-${new Date().toISOString().slice(0,10)}.json`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+  $('#bImport').onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    try { const j = JSON.parse(await f.text()); if (!j.salt || !j.iv || !j.ct) throw 0;
+      localStorage.setItem(STORE, JSON.stringify(j)); key = null; vault = null; showLock('Backup restored. Unlock it with the passcode it was saved with.'); }
+    catch { msg('#bMsg', "That file isn't a ProofDeck backup.", true); }
+  };
+}
+function msg(sel, m, bad){ const el = $(sel); el.textContent = m; el.style.color = bad ? 'var(--bad)' : 'var(--ok)'; }
+
+// test hook (no secrets exposed)
+window.__pd = { get unlocked(){ return !!key; }, counts: () => vault && ({ sources: vault.sources.length, queue: vault.queue.length, library: vault.library.length }) };
+
+showLock();
+</script>
+</body>
+</html>
